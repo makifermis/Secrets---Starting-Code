@@ -1,26 +1,41 @@
 //jshint esversion:6
-import express from "express";
-import bodyParser from "body-parser";
-import mongoose from "mongoose";
-
-
+import 'dotenv/config';
+import express from 'express';
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 const app = express();
 const port = 3000;
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static("public"));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
-
-mongoose.connect("mongodb://localhost:27017/userDB");
+mongoose.connect('mongodb://localhost:27017/userDB');
 
 const userSchema = new mongoose.Schema({
     email: String,
     password: String
 });
 
-const User = new mongoose.model("User", userSchema);
+const saltRounds = 10;
+
+userSchema.pre('save', async function (next) {
+    const user = this;
+    if (!user.isModified('password')) return next();
+
+    try {
+        const hash = await bcrypt.hash(user.password, saltRounds);
+        user.password = hash;
+        next();
+    } catch (err) {
+        return next(err);
+    }
+});
+
+const User = mongoose.model('User', userSchema);
+
 
 app.get("/", function (req, res) {
     res.render("home");
